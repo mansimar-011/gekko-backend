@@ -33,6 +33,8 @@ class ZerodhaAuth:
         kite = KiteConnect(api_key=CREDENTIALS["api_key"])
         data = kite.generate_session(request_token, api_secret=CREDENTIALS["api_secret"])
         self._save_and_apply(kite, data["access_token"])
+        self.state.auth_status = "connected"
+        self.state.add_log("GEKKO", "Zerodha connected via manual login ✓", "info")
         log.info("Manual token exchange successful")
 
     def _save_and_apply(self, kite: KiteConnect, access_token: str):
