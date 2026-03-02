@@ -178,23 +178,21 @@ class ZerodhaAuth:
                         log.info(f"Captured request_token: {tokens[0][:10]}...")
 
             self._pending_request_token = None
-            page.on("response", lambda r: asyncio.ensure_future(capture_token(r)))
 
-            # Wait up to 20 seconds for redirect
-            for _ in range(20):
-                await asyncio.sleep(1)
-                if self._pending_request_token:
-                    break
+            # Wait for Zerodha to redirect back with request_token
+            try:
+                await page.wait_for_url("**/callback*", timeout=30000)
+            except Exception:
+                # Also check current URL directly
+                pass
+
+            current_url = page.url
+            if "request_token=" in current_url:
+                from urllib.parse import urlparse, parse_qs
+                params = parse_qs(urlparse(current_url).query)
+                self._pending_request_token = params.get("request_token", [None])[0]
 
             await browser.close()
-
-            if not self._pending_request_token:
-                # Try extracting from current URL as fallback
-                current_url = page.url
-                if "request_token=" in current_url:
-                    from urllib.parse import urlparse, parse_qs
-                    params = parse_qs(urlparse(current_url).query)
-                    self._pending_request_token = params.get("request_token", [None])[0]
 
             if not self._pending_request_token:
                 raise RuntimeError("Could not capture request_token from Zerodha redirect")
