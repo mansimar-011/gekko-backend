@@ -161,8 +161,12 @@ class ZerodhaAuth:
             totp = pyotp.TOTP(totp_secret).now()
             log.info(f"Generated TOTP: {totp}")
             await page.fill('input[label="External TOTP"]', totp)
-            await page.locator('button[type="submit"]').click(timeout=5000)
-            await page.wait_for_timeout(3000)  # wait for redirect to happen
+            # TOTP auto-submits on 6 digits — just wait for redirect
+            try:
+                await page.locator('button[type="submit"]:not([disabled])').click(timeout=3000)
+            except Exception:
+                pass  # button already processing, that's fine
+            await page.wait_for_timeout(5000)  # wait for Zerodha to redirect
 
             # ── Step 4: Wait for redirect and capture request_token ──
             # Zerodha redirects to: https://your-redirect-url?request_token=XXX&status=success
